@@ -2,33 +2,38 @@
 
 # INITIALIZE EMPTY ARRAYS & INDEX CALC
 
-#these arrays will be filled by user
+# these arrays will be filled by user
 available=()
 maxNeed=()
 allocated=()
 
-#this array will be calculated with maxNeed - allocated
+# this array will be calculated with maxNeed - allocated
 need=()
 
-#this array will be filled after each process runs succesfully
+# this array will be filled after each process runs succesfully
 safeSequence=()
 
-# since I use the index calculation often I wrote it as a function
+# this array keep track of executable processes so we don't unnecesarily go through 
+# all processes when checking for a safe sequence
+finishedProcesses=()
+
+# since we use the index calculation often we write it as a function
 index() {
     echo $(( $1 * resources + $2 ))
 }
 
-# display_matrix() {
-#     local array=$1;
-
-#     for ((i = 0; i < processes; i++)); do
-#         for ((j = 0; j < resources; j++)); do
-#             local idx=$(index $i $j)
-#             echo -n "${array[$idx]} "
-#         done
-#         echo
-#     done
-# }
+# since we're displaying matrices with the same code three times, put it in a function
+display_matrix() {
+    local array=$1;
+    
+    for ((i = 0; i < processes; i++)); do
+        for ((j = 0; j < resources; j++)); do
+            local idx=$(index $i $j)
+            eval "echo -n \"\${$array[$idx]} \""
+        done
+        echo
+    done
+}
 
 # USER INPUTS (proc, res, available)
 
@@ -38,7 +43,7 @@ read -p "Enter number of processes: " processes
 
 
 # available resources
-echo "Enter available resources (separated ny spaces):"
+echo "Enter available resources (separated by spaces):"
 read -ra available
 
 # max need matrix
@@ -66,41 +71,40 @@ done
 # MATRICES DISPLAY
 
 echo -e "\nMax need matrix: "
-# display_matrix maxNeed
-for ((i = 0; i < processes; i++)); do
-    for ((j = 0; j < resources; j++)); do
-        echo -n "${maxNeed[$(index $i $j)]} "
-    done
-    echo
-done
+display_matrix maxNeed
+# for ((i = 0; i < processes; i++)); do
+#     for ((j = 0; j < resources; j++)); do
+#         echo -n "${maxNeed[$(index $i $j)]} "
+#     done
+#     echo
+# done
 
 echo -e "\nAllocated resources matrix: "
-for ((i = 0; i < processes; i++)); do
-    for ((j = 0; j < resources; j++)); do
-        echo -n "${allocated[$(index $i $j)]} "
-    done
-    echo
-done
+display_matrix allocated
+# for ((i = 0; i < processes; i++)); do
+#     for ((j = 0; j < resources; j++)); do
+#         echo -n "${allocated[$(index $i $j)]} "
+#     done
+#     echo
+# done
 
 echo -e "\nCurrent need matrix (Max need - allocated): "
-for ((i = 0; i < processes; i++)); do
-    for ((j = 0; j < resources; j++)); do
-        echo -n "${need[$(index $i $j)]} "
-    done
-    echo
-done
+display_matrix need
+# for ((i = 0; i < processes; i++)); do
+#     for ((j = 0; j < resources; j++)); do
+#         echo -n "${need[$(index $i $j)]} "
+#     done
+#     echo
+# done
 
 #SAFE SEQUENCE FINIDING SECTION
-
-# keep track of processes so we don't go into an infinite loop
-finished_processes=()
 
 # work initiated as just the available resources -- needs to be declared with @ so it does not get counted as single string
 work=("${available[@]}")
 
-finish=()                  # Finish array tracks completed processes
+# initialized with 0s as default so every process gets checked
 for ((i = 0; i < processes; i++)); do
-    finish[i]=0; 
+    finishedProcesses[i]=0; 
 done
 
 # implementing two flags, process flag keeps track of potential processes to try to execute
@@ -108,10 +112,11 @@ processFlag=true
 
 # we start it as true to start the loop
 while $processFlag; do
-    # and immediately set it as false so if there are no remaining possible processes to execute, exit the loop
+    # and immediately set it as false so if there are no remaining possible processes to execute, we exit the loop
     processFlag=false
     for ((p = 0; p < processes; p++)); do
-        if ((finish[p] == 0)); then
+        # if the current process we are checking is not already marked as executable
+        if ((finishedProcesses[p] == 0)); then
             echo "checking process number: $(($p+1))"
             # allocation flag is truthy by default when we start to check a process, 
             # it checks processes that can be executed and it's resources allocated
@@ -134,13 +139,16 @@ while $processFlag; do
                 for ((r = 0; r < resources; r++)); do
                     idx=$(index $p $r)
                     echo "adding processes allocated resources to current work -> resource number $(($r+1)) (${work[r]} + ${allocated[$idx]})"
-                    # and add them to our work
+                    # add them to our work
                     work[r]=$((work[r] + allocated[$idx]))
                 done
                 echo "new available resources (work)"
                 echo "${work[@]}"
-                finish[p]=1
-                safe_sequence+=("$p")
+                # mark the process as able to be allocated in the array so we don't go through it again
+                finishedProcesses[p]=1
+                # add the current process to the safe sequence array
+                safeSequence+=("$p")
+                # and set the process flag back to true so the loop continues
                 processFlag=true
             fi
         fi
@@ -150,10 +158,11 @@ done
 
 
 
-# Print results
-if [[ ${#safe_sequence[@]} -eq processes ]]; then
-    echo "System is in a SAFE state!"
-    echo "Safe sequence: ${safe_sequence[*]}"
+# if the safe sequence has the same amount of elements as the processes,
+# all processes can be executed safely --> we are in a safe state!
+if [[ ${#safeSequence[@]} -eq processes ]]; then
+    echo "Safe sequence found: ${safeSequence[*]}"
 else
-    echo "System is in an UNSAFE state! No safe sequence found."
+    #otherwise, system is not in safe state :(
+    echo "System not in safe state! No safe sequence is available."
 fi

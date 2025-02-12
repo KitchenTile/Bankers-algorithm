@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# INITIALIZE EMPTY ARRAYS & INDEX CALC
+# INITIALIZE EMPTY ARRAYS & HELPER FUNCTIONS
 
 # these arrays will be filled by user
 available=()
@@ -29,22 +29,43 @@ display_matrix() {
     for ((i = 0; i < processes; i++)); do
         for ((j = 0; j < resources; j++)); do
             local idx=$(index $i $j)
+            # need eval to prevent using indirect expansion?
             eval "echo -n \"\${$array[$idx]} \""
         done
         echo
     done
 }
 
+# basic input validation 
+validateInput() {
+    if [ -z $1 ]; then
+        echo "Inputs can't be empty"
+        exit 0
+    fi
+
+    # regex from medium article
+    if ! [[ $1 =~ ^[+-]?[0-9]+\.?[0-9]*$ ]]; then
+        echo "Inputs must be numbers!"
+        exit 0
+    fi
+}
+
 # USER INPUTS (proc, res, available)
 
 # number of processes and resources
 read -p "Enter number of resources: " resources
+validateInput $resources
+
 read -p "Enter number of processes: " processes
+
+validateInput $processes
 
 
 # available resources
 echo "Enter available resources (separated by spaces):"
 read -ra available
+
+validateInput $available
 
 # max need matrix
 echo "Enter the maximum resource need matrix (row):"
@@ -52,10 +73,10 @@ for ((i = 0; i < processes; i++)); do
     for ((j = 0; j < resources; j++)); do
         idx=$(index $i $j)
         read -p "Max Need [$i,$j]: " value
-         maxNeed[$idx]=$value
+        validateInput $value
+        maxNeed[$idx]=$value
     done
 done
-
 
 # allocated resources matrix
 echo "Enter the allocated resources matrix (row):"
@@ -72,30 +93,12 @@ done
 
 echo -e "\nMax need matrix: "
 display_matrix maxNeed
-# for ((i = 0; i < processes; i++)); do
-#     for ((j = 0; j < resources; j++)); do
-#         echo -n "${maxNeed[$(index $i $j)]} "
-#     done
-#     echo
-# done
 
 echo -e "\nAllocated resources matrix: "
 display_matrix allocated
-# for ((i = 0; i < processes; i++)); do
-#     for ((j = 0; j < resources; j++)); do
-#         echo -n "${allocated[$(index $i $j)]} "
-#     done
-#     echo
-# done
 
 echo -e "\nCurrent need matrix (Max need - allocated): "
 display_matrix need
-# for ((i = 0; i < processes; i++)); do
-#     for ((j = 0; j < resources; j++)); do
-#         echo -n "${need[$(index $i $j)]} "
-#     done
-#     echo
-# done
 
 #SAFE SEQUENCE FINIDING SECTION
 
@@ -154,8 +157,6 @@ while $processFlag; do
         fi
     done
 done
-
-
 
 
 # if the safe sequence has the same amount of elements as the processes,

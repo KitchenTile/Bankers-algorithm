@@ -67,7 +67,7 @@ safeSequenceCheck() {
 
     #while the safe sequence is less than the anount of processes enter the loop
     while [[ ${#safeSequence[@]} -lt processes ]]; do
-        # and immediately set it as false so if there are no remaining possible processes to execute, we exit the loop
+        # immediately set it as false so if there are no remaining possible processes to execute, we exit the loop
         processFlag=false
 
         for ((p = 0; p < processes; p++)); do
@@ -126,7 +126,7 @@ safeSequenceCheck() {
     fi
 }
 
-# ON PROGRAM RUN
+# ON PROGRAMME RUN
 
 # USER INPUTS (proc, res, need, available)
 
@@ -139,7 +139,7 @@ validateInput $processes
 
 
 # available resources
-echo "Enter available resources (separated by spaces):"
+echo "Enter available resources (Example: 2 2):"
 read -ra available
 validateInput $available
 
